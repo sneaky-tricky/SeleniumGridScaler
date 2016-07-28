@@ -1,0 +1,34 @@
+Stiicky footer with flexbox
+margin-top on footer
+
+job edit
+use name of job in header instead of Job Details
+buttons use wrong font
+cursor does not chenge to pointer
+
+Buttons should be prime components
+
+Remove colons from labels
+Padding on title
+
+
+Config edit
+Remove Config File from title
+Add header  bar and put the filename in it.
+
+move pagination number to show to right. add label before "Show"
+
+tighten up table spacing
+
+
+#mobile-menu-button.MenuClose from 28 to 20
+(menu animation set margin-top to 20px)
+
+.layout-menu set from 63 to 20
+
+menu icons for jobs, am=dmin 
+
+Add icons into headers
+
+Table columns are not resizable
+action buttons in same column
