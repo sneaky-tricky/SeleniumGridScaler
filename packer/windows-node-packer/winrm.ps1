@@ -24,7 +24,7 @@ $admin = [adsi]("WinNT://./administrator, user")
 $admin.psbase.invoke("SetPassword", "selenium123#")
 
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-cinst -y googlechrome wget unzip --allow-empty-checksums
+cinst -y googlechrome wget unzip autologon --allow-empty-checksums
 cinst -y jdk8 --version 8.0.102 --allow-empty-checksums
 cinst -y seleniumhub --version 2.43.1.2 --allow-empty-checksums
 cinst -y selenium-chrome-driver --version 2.23 --allow-empty-checksums

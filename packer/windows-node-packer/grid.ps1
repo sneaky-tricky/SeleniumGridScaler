@@ -1,6 +1,6 @@
 netsh advfirewall firewall add rule name="SeleniumNode" protocol=TCP dir=in localport=5555 action=allow
 
-cinst -y googlechrome wget unzip --allow-empty-checksums
+cinst -y googlechrome wget unzip autologon --allow-empty-checksums
 cinst -y jdk8 --version 8.0.102 --allow-empty-checksums
 cinst -y seleniumhub --version 2.43.1.2 --allow-empty-checksums
 cinst -y selenium-chrome-driver --version 2.23 --allow-empty-checksums
