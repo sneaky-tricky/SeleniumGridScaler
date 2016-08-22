@@ -12,7 +12,7 @@ su - ec2-user -c "cd /opt/SeleniumGridScaler ; mvn install"
 
 cp /tmp/start.sh .
 cp /tmp/aws.properties /
-chown ec2-user -R /opt/SeleniumGridScaler
+chown ec2-user -R /opt/SeleniumGridScaler /aws.properties
 
 ### https://www.certdepot.net/rhel7-rc-local-service/
 echo "su - ec2-user -c 'cd /opt/SeleniumGridScaler ; ./start.sh'" >> /etc/rc.d/rc.local
