@@ -48,8 +48,13 @@
       "Description" : "EC2 instance type",
       "Type" : "String",
       "Default" : "t2.medium",
-      "AllowedValues" : [ "t1.micro","t2.medium","t2.large","m1.small","m1.medium","m1.large","m1.xlarge", "m4.large","m2.xlarge","m2.2xlarge","m2.4xlarge",
-      "m3.xlarge","m3.2xlarge","c1.medium","c1.xlarge","c3.xlarge","c3.2xlarge", "c3.4xlarge"],
+      "AllowedValues" : [ 
+            "t1.micro","t2.medium","t2.large",
+		    "m1.small",
+		    "m3.medium","m3.large","m3.xlarge","m3.2xlarge",
+		    "m4.large",
+		    "c1.medium","c1.large","c1.xlarge","c3.xlarge","c3.2xlarge", "c3.4xlarge"
+	  ],
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
 
@@ -86,6 +91,24 @@
      
   },
   
+  "Mappings" : {
+    "InstanceMap" : {
+      "t1.micro"    : { "JvmHeap" : "512m", "MaxPermSize" :  "96m"},
+      "t2.medium"    : { "JvmHeap" : "3g", "MaxPermSize" :  "512m"},
+      "t2.large"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "m1.small"    : { "JvmHeap" : "1g", "MaxPermSize" :  "192m" },
+      "m3.medium"  : { "JvmHeap" : "3g", "MaxPermSize" :  "512m" },
+      "m3.large"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "m3.xlarge"   : { "JvmHeap" : "12g", "MaxPermSize" :  "512m" },
+      "m3.2xlarge"  : { "JvmHeap" : "28g", "MaxPermSize" :  "512m" },
+      "m4.large"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "c1.medium"   : { "JvmHeap" : "1g", "MaxPermSize" :  "192m" },
+      "c3.large"   : { "JvmHeap" : "3g", "MaxPermSize" :  "265m" },
+      "c3.xlarge"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "c3.2xlarge"  : { "JvmHeap" : "13g", "MaxPermSize" :  "512m" },
+      "c3.4xlarge"  : { "JvmHeap" : "27g", "MaxPermSize" :  "512m" }
+    }
+  },
   
   "Resources" : {
   
@@ -177,7 +200,10 @@
                 "content" : { "Fn::Join" : ["", [
                   "#!/bin/bash", "\n",
                   "cd /opt/grid", "\n",
-                  "java -DpropertyFileLocation=/opt/grid/aws.properties -DipAddress=\"http://gridscaler-",
+                  "java ",
+                  " -Xmx", 
+                  { "Fn::FindInMap" : [ "InstanceMap", { "Ref" : "InstanceType" }, "JvmHeap"]},
+                  " -DpropertyFileLocation=/opt/grid/aws.properties -DipAddress=\"http://gridscaler-",
                   { "Ref" : "DeploymentName" },
                   ".cas.aws.qualcomm.com",
                   "\" -cp /opt/grid/automation-grid.jar org.openqa.grid.selenium.GridLauncher ",
@@ -353,7 +379,7 @@
             "InstancePort": "4444",
             "Protocol": "HTTPS",
             "InstanceProtocol" : "HTTP",
-            "PolicyNames" : ["ELBSecurityPolicy-2015-05"],
+            "PolicyNames" : ["ELBSecurityPolicy-2016-08"],
             "SSLCertificateId" : "arn:aws:iam::447926870024:server-certificate/cas.aws.qualcomm.com"
         }],
         "HealthCheck" : {

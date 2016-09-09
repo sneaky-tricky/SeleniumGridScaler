@@ -68,7 +68,8 @@ public class AwsVmManager implements VmManager {
     AWSCredentials credentials;
     private Properties awsProperties;
     public static final int CHROME_THREAD_COUNT = 5;
-    public static final int FIREFOX_IE_THREAD_COUNT = 1;
+    public static final int IE_THREAD_COUNT = 5;
+    public static final int FIREFOX_THREAD_COUNT = 1;
     private String region;
 
     static {
@@ -220,7 +221,7 @@ public class AwsVmManager implements VmManager {
 
             String[] splitSecurityGroupdIds = securityGroupKey.split(",");
 
-            List securityGroupIdsAryLst = new ArrayList();
+            List<String> securityGroupIdsAryLst = new ArrayList<String>();
             for (int i = 0; i < splitSecurityGroupdIds.length; i++) {
 
                 log.info("Setting security group(s): " + splitSecurityGroupdIds[i]);
@@ -267,7 +268,7 @@ public class AwsVmManager implements VmManager {
             throw new RuntimeException("Unsupported browser/platform: " + browserPlatformPair);
         }
         // After we have verified the platform is supported, go ahead and set it to the default platform
-        if (platform == platform.ANY) {
+        if (platform == Platform.ANY) {
             platform = DEFAULT_PLATFORM;
         }
         String userData = getUserData(uuid, hubHostName, browser, platform, maxSessions);
@@ -493,11 +494,12 @@ public class AwsVmManager implements VmManager {
         }
 
         String nodeConfig = getFileContents(resourceName);
-        nodeConfig = nodeConfig.replaceAll("<MAX_SESSION>", String.valueOf(maxSessions));
-        nodeConfig = nodeConfig.replaceAll("<MAX_SESSION_FIREFOX>",
-                String.valueOf(AwsVmManager.FIREFOX_IE_THREAD_COUNT));
-        nodeConfig = nodeConfig.replaceAll("<MAX_SESSION_IE>", String.valueOf(AwsVmManager.FIREFOX_IE_THREAD_COUNT));
-        nodeConfig = nodeConfig.replaceAll("<MAX_SESSION_CHROME>", String.valueOf(AwsVmManager.CHROME_THREAD_COUNT));
+
+        nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION", maxSessions);
+        nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_FIREFOX", AwsVmManager.FIREFOX_THREAD_COUNT);
+        nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_IE", AwsVmManager.IE_THREAD_COUNT);
+        nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_CHROME", AwsVmManager.CHROME_THREAD_COUNT);
+
         nodeConfig = nodeConfig.replaceAll("<UUID>", uuid);
         nodeConfig = nodeConfig.replaceAll("<CREATED_BROWSER>", browser);
         nodeConfig = nodeConfig.replaceAll("<CREATED_OS>", platform.toString());
@@ -555,5 +557,15 @@ public class AwsVmManager implements VmManager {
             }
         }
         return fileContents;
+    }
+
+    /**
+     * Replaces the values of <key> in the passed in string with the value numThreads or the override from the System
+     * properties.
+     * 
+     */
+    private String replaceConfig(String s, String key, int numThreads) {
+        String value = System.getProperty(key, Integer.toString(numThreads));
+        return s.replaceAll("<" + key + ">", value);
     }
 }

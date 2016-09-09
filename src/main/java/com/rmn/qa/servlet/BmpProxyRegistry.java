@@ -79,7 +79,10 @@ public class BmpProxyRegistry {
     public void stopProxy(String uuid) {
         ProxyHolder holder = proxyMap.remove(uuid);
         if (holder != null) {
+            log.warn("stopping proxy for uuid " + uuid + " is not in registry.");
             holder.proxy.stop();
+        } else {
+            log.warn("proxy for uuid " + uuid + " is not in registry.");
         }
     }
 

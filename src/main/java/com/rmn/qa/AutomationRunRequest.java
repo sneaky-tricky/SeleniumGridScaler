@@ -19,20 +19,18 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.remote.CapabilityType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.rmn.qa.task.AbstractAutomationCleanupTask;
 
 /**
- * Represents a run request which will typically be sent in by a test run requesting resources.  Used
- * to encapsulate various run parameters
+ * Represents a run request which will typically be sent in by a test run requesting resources. Used to encapsulate
+ * various run parameters
+ * 
  * @author mhardin
  */
 public final class AutomationRunRequest {
 
-    private static final Logger log = LoggerFactory.getLogger(AbstractAutomationCleanupTask.class);
+    // private static final Logger log = LoggerFactory.getLogger(AbstractAutomationCleanupTask.class);
 
     private final String uuid;
     private final Integer threadCount;
@@ -41,52 +39,73 @@ public final class AutomationRunRequest {
     private final Platform platform;
     private final Date createdDate;
 
-    // Require callers to have required variables through constructor below
-    private AutomationRunRequest() {
-        this(null);
-    }
+    // // Require callers to have required variables through constructor below
+    // private AutomationRunRequest() {
+    // this(null);
+    // }
 
     /**
      * Constructs a run request instance for the specified browser
-     * @param browser Browser for the requesting test run
+     * 
+     * @param browser
+     *            Browser for the requesting test run
      */
     public AutomationRunRequest(String browser) {
-        this(null,null,browser);
+        this(null, null, browser);
     }
 
     /**
      * Constructs a run request object
-     * @param uuid UUID to represent the requesting test run
-     * @param threadCount Number of threads for the requesting test run
-     * @param browser Browser for the requesting test run
+     * 
+     * @param uuid
+     *            UUID to represent the requesting test run
+     * @param threadCount
+     *            Number of threads for the requesting test run
+     * @param browser
+     *            Browser for the requesting test run
      */
-    public AutomationRunRequest(String uuid, Integer threadCount,String browser) {
-        this(uuid,threadCount,browser,null,null);
+    public AutomationRunRequest(String uuid, Integer threadCount, String browser) {
+        this(uuid, threadCount, browser, null, null);
     }
 
     /**
      * Constructs a run request object
-     * @param runUuid UUID to represent the requesting test run
-     * @param threadCount Number of threads for the requesting test run
-     * @param browser Browser for the requesting test run
-     * @param browserVersion Browser version for the requesting test run
-     * @param platform Platform for the requesting test run
+     * 
+     * @param runUuid
+     *            UUID to represent the requesting test run
+     * @param threadCount
+     *            Number of threads for the requesting test run
+     * @param browser
+     *            Browser for the requesting test run
+     * @param browserVersion
+     *            Browser version for the requesting test run
+     * @param platform
+     *            Platform for the requesting test run
      */
-    public AutomationRunRequest(String runUuid, Integer threadCount, String browser, String browserVersion, Platform platform) {
+    public AutomationRunRequest(String runUuid, Integer threadCount, String browser, String browserVersion,
+            Platform platform) {
         this(runUuid, threadCount, browser, browserVersion, platform, new Date());
     }
 
     /**
      * Constructs a run request object
-     * @param runUuid UUID to represent the requesting test run
-     * @param threadCount Number of threads for the requesting test run
-     * @param browser Browser for the requesting test run
-     * @param browserVersion Browser version for the requesting test run
-     * @param platform Platform for the requesting test run
-     * @param createdDate Date that the test run request was received
+     * 
+     * @param runUuid
+     *            UUID to represent the requesting test run
+     * @param threadCount
+     *            Number of threads for the requesting test run
+     * @param browser
+     *            Browser for the requesting test run
+     * @param browserVersion
+     *            Browser version for the requesting test run
+     * @param platform
+     *            Platform for the requesting test run
+     * @param createdDate
+     *            Date that the test run request was received
      */
     @VisibleForTesting
-    public AutomationRunRequest(String runUuid, Integer threadCount, String browser,String browserVersion, Platform platform, Date createdDate) {
+    public AutomationRunRequest(String runUuid, Integer threadCount, String browser, String browserVersion,
+            Platform platform, Date createdDate) {
         this.uuid = runUuid;
         this.threadCount = threadCount;
         this.browser = browser;
@@ -97,22 +116,24 @@ public final class AutomationRunRequest {
 
     /**
      * Generates a AutomationRunRequest object from the capabilities passed in
+     * 
      * @param capabilities
      * @return
      */
-    public static AutomationRunRequest requestFromCapabilities(Map<String,Object> capabilities) {
-        String capabilityBrowser = (String)capabilities.get(CapabilityType.BROWSER_NAME);
+    public static AutomationRunRequest requestFromCapabilities(Map<String, Object> capabilities) {
+        String capabilityBrowser = (String) capabilities.get(CapabilityType.BROWSER_NAME);
         String capabilityBrowserVersion = null;
-        if(capabilities.containsKey(CapabilityType.VERSION)) {
-            capabilityBrowserVersion = (String)capabilities.get(CapabilityType.VERSION);
+        if (capabilities.containsKey(CapabilityType.VERSION)) {
+            capabilityBrowserVersion = (String) capabilities.get(CapabilityType.VERSION);
         }
         Object platform = capabilities.get(CapabilityType.PLATFORM);
         Platform capabilityPlatform = AutomationUtils.getPlatformFromObject(platform);
-        return new AutomationRunRequest(null,null,capabilityBrowser,capabilityBrowserVersion,capabilityPlatform);
+        return new AutomationRunRequest(null, null, capabilityBrowser, capabilityBrowserVersion, capabilityPlatform);
     }
 
     /**
      * Returns the UUID for this run request
+     * 
      * @return
      */
     public String getUuid() {
@@ -121,6 +142,7 @@ public final class AutomationRunRequest {
 
     /**
      * Returns the thread count requested by this run
+     * 
      * @return
      */
     public int getThreadCount() {
@@ -129,6 +151,7 @@ public final class AutomationRunRequest {
 
     /**
      * Returns the browser (e.g. 'chrome', 'firefox', etc) for this run request
+     * 
      * @return
      */
     public String getBrowser() {
@@ -137,17 +160,25 @@ public final class AutomationRunRequest {
 
     /**
      * Returns the version of the browser (e.g. '27' for Firefox)
+     * 
      * @return
      */
-    public String getBrowserVersion() { return browserVersion; }
+    public String getBrowserVersion() {
+        return browserVersion;
+    }
 
     /**
      * Returns the Platform (e.g. 'Platform.WINDOWS')
+     * 
      * @return
      */
-    public Platform getPlatform() { return platform; }
+    public Platform getPlatform() {
+        return platform;
+    }
+
     /**
      * Returns the created date for this run request
+     * 
      * @return
      */
     public Date getCreatedDate() {
@@ -156,12 +187,13 @@ public final class AutomationRunRequest {
 
     /**
      * Returns true if this run request is less than 2 minutes old, false otherwise
+     * 
      * @return
      */
     public boolean isNewRun() {
         Calendar c = Calendar.getInstance();
         c.setTime(createdDate);
-        c.add(Calendar.MINUTE,2);
+        c.add(Calendar.MINUTE, 2);
         return new Date().before(c.getTime());
     }
 
@@ -169,56 +201,60 @@ public final class AutomationRunRequest {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("Run Request");
-        if(!StringUtils.isEmpty(uuid)) {
+        if (!StringUtils.isEmpty(uuid)) {
             builder.append(" - UUID: ").append(uuid);
         }
-        if(threadCount != null) {
+        if (threadCount != null) {
             builder.append(" - Thread count: ").append(threadCount);
         }
-        if(!StringUtils.isEmpty(browser)) {
+        if (!StringUtils.isEmpty(browser)) {
             builder.append(" - Browser: ").append(browser);
         }
-        if(platform != null) {
+        if (platform != null) {
             builder.append(" - Platform: ").append(platform);
         }
         return builder.toString();
     }
 
     /**
-     * Returns true if this run request matches the capabilities passed in.  Includes browser, browser version, and OS
+     * Returns true if this run request matches the capabilities passed in. Includes browser, browser version, and OS
+     * 
      * @param capabilities
      * @return
      */
-    public boolean matchesCapabilities(Map<String,Object> capabilities) {
-        String capabilityBrowser = (String)capabilities.get(CapabilityType.BROWSER_NAME);
-        String capabilityBrowserVersion = (String)capabilities.get(CapabilityType.VERSION);
+    public boolean matchesCapabilities(Map<String, Object> capabilities) {
+        String capabilityBrowser = (String) capabilities.get(CapabilityType.BROWSER_NAME);
+        String capabilityBrowserVersion = (String) capabilities.get(CapabilityType.VERSION);
         Object capabilityPlatformObject = capabilities.get(CapabilityType.PLATFORM);
         Platform capabilityPlatform = AutomationUtils.getPlatformFromObject(capabilityPlatformObject);
-        if(!AutomationUtils.lowerCaseMatch(browser, capabilityBrowser)) {
+        if (!AutomationUtils.lowerCaseMatch(browser, capabilityBrowser)) {
             return false;
         }
-        if(browserVersion != null && !AutomationUtils.lowerCaseMatch(browserVersion,capabilityBrowserVersion))  {
+        if (browserVersion != null && !AutomationUtils.lowerCaseMatch(browserVersion, capabilityBrowserVersion)) {
             return false;
         }
-        if(platform != null && !AutomationUtils.firstPlatformCanBeFulfilledBySecondPlatform(platform, capabilityPlatform)) {
+        if (platform != null
+                && !AutomationUtils.firstPlatformCanBeFulfilledBySecondPlatform(platform, capabilityPlatform)) {
             return false;
         }
         return true;
     }
 
     /**
-     * Returns true if this run request matches the run request passed in.  Includes browser, browser version, and OS
+     * Returns true if this run request matches the run request passed in. Includes browser, browser version, and OS
+     * 
      * @param otherRequest
      * @return
      */
     public boolean matchesCapabilities(AutomationRunRequest otherRequest) {
-        if(!AutomationUtils.lowerCaseMatch(browser, otherRequest.getBrowser())) {
+        if (!AutomationUtils.lowerCaseMatch(browser, otherRequest.getBrowser())) {
             return false;
         }
-        if(browserVersion != null && browserVersion != otherRequest.getBrowserVersion()) {
+        if (browserVersion != null && browserVersion != otherRequest.getBrowserVersion()) {
             return false;
         }
-        if(platform != null && !AutomationUtils.firstPlatformCanBeFulfilledBySecondPlatform(platform, otherRequest.getPlatform())) {
+        if (platform != null
+                && !AutomationUtils.firstPlatformCanBeFulfilledBySecondPlatform(platform, otherRequest.getPlatform())) {
             return false;
         }
         return true;
@@ -226,15 +262,19 @@ public final class AutomationRunRequest {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         AutomationRunRequest that = (AutomationRunRequest) o;
 
-        if (!browser.equals(that.browser)) return false;
+        if (!browser.equals(that.browser))
+            return false;
         if (browserVersion != null ? !browserVersion.equals(that.browserVersion) : that.browserVersion != null)
             return false;
-        if (platform != null ? !platform.equals(that.platform) : that.platform != null) return false;
+        if (platform != null ? !platform.equals(that.platform) : that.platform != null)
+            return false;
 
         return true;
     }

@@ -98,6 +98,7 @@ public class BmpServlet extends RegistryBasedServlet {
                     "uuid must be specified in json");
             return;
         }
+        log.info("Stopping proxy with uuid " + uuid);
         BmpProxyRegistry.getInstance().stopProxy(uuid);
         response.setStatus(HttpServletResponse.SC_ACCEPTED);
     }
