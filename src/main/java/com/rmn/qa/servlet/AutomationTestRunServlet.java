@@ -62,7 +62,7 @@ import com.rmn.qa.task.AutomationScaleNodeTask;
  * Servlet used to register new {@link com.rmn.qa.AutomationRunRequest runs} as well as delete existing
  * {@link com.rmn.qa.AutomationRunRequest runs}. New {@link com.rmn.qa.AutomationRunRequest runs} will automatically
  * spawn up new {@link com.rmn.qa.AutomationDynamicNode nodes} as needed
- * 
+ *
  * @author mhardin
  */
 public class AutomationTestRunServlet extends RegistryBasedServlet implements RegistryRetriever {
@@ -83,18 +83,14 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
 
     /**
      * Constructs a test run servlet with customized values
-     * 
-     * @param registry
-     *            Selenium registry object to use from Grid
-     * @param initThreads
-     *            Set to true if you want the cleanup threads initialized
-     * @param ec2
-     *            EC2 implementation that you wish to use
-     * @param requestMatcher
-     *            RequestMatcher implementation you wish you use
+     *
+     * @param registry       Selenium registry object to use from Grid
+     * @param initThreads    Set to true if you want the cleanup threads initialized
+     * @param ec2            EC2 implementation that you wish to use
+     * @param requestMatcher RequestMatcher implementation you wish you use
      */
     public AutomationTestRunServlet(Registry registry, boolean initThreads, VmManager ec2,
-            RequestMatcher requestMatcher) {
+                                    RequestMatcher requestMatcher) {
         super(registry);
         setManageEc2(ec2);
         setRequestMatcher(requestMatcher);
@@ -260,30 +256,31 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
                     browserVersion, requestedPlatform);
             boolean addSuccessful = AutomationContext.getContext().addRun(newRunRequest);
             if (!addSuccessful) {
-                // log.warn(String.format("Test run already exists for the same UUID [%s]", uuid));
-                // response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Test run already exists with the same
-                // UUID.");
-                // return;
                 testExists = true;
             }
         }
+
+        if (testExists) {
+            log.warn(String.format("Test run already exists for the same UUID [%s]", uuid));
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Test run already exists with the same UUID.");
+            return;
+        }
+
         if (amisNeeded) {
             // Start up AMIs as that will be required only if the test does not exist.
-            if (!testExists) {
-                log.warn(String.format(
-                        "Insufficient nodes to fulfill request. New AMIs will be queued up. Requested [%s] - Available [%s] - Request UUID [%s]",
-                        threadCountRequested, currentlyAvailableNodes, uuid));
-                try {
-                    AutomationTestRunServlet.startNodes(ec2, uuid, amiThreadsToStart, browserRequested,
-                            requestedPlatform);
-                } catch (NodesCouldNotBeStartedException e) {
-                    // Make sure and de-register the run if the AMI startup was not successful
-                    AutomationContext.getContext().deleteRun(uuid);
-                    String throwableMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-                    String msg = "Nodes could not be started: " + throwableMessage;
-                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
-                    return;
-                }
+            log.warn(String.format(
+                    "Insufficient nodes to fulfill request. New AMIs will be queued up. Requested [%s] - Available [%s] - Request UUID [%s]",
+                    threadCountRequested, currentlyAvailableNodes, uuid));
+            try {
+                AutomationTestRunServlet.startNodes(ec2, uuid, amiThreadsToStart, browserRequested,
+                        requestedPlatform);
+            } catch (NodesCouldNotBeStartedException e) {
+                // Make sure and de-register the run if the AMI startup was not successful
+                AutomationContext.getContext().deleteRun(uuid);
+                String throwableMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                String msg = "Nodes could not be started: " + throwableMessage;
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, msg);
+                return;
             }
             // Return a 201 to let the caller know AMIs will be started
             response.setStatus(HttpServletResponse.SC_CREATED);
@@ -315,11 +312,11 @@ public class AutomationTestRunServlet extends RegistryBasedServlet implements Re
 
     /**
      * Starts up AMIs
-     * 
+     *
      * @param threadCountRequested
      * @return
      */
-    public static List<AutomationDynamicNode> startNodes(VmManager ec2, String uuid,int threadCountRequested, String browser, Platform platform) throws NodesCouldNotBeStartedException {
+    public static List<AutomationDynamicNode> startNodes(VmManager ec2, String uuid, int threadCountRequested, String browser, Platform platform) throws NodesCouldNotBeStartedException {
         log.info(String.format("%d threads requested", threadCountRequested));
         try {
             String localhostname;

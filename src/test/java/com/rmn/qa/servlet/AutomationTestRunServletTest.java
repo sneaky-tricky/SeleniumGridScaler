@@ -203,8 +203,8 @@ public class AutomationTestRunServletTest extends BaseTest {
         // Submit a 2nd request with the same UUID
         MockHttpServletResponse response2 = new MockHttpServletResponse();
         servlet.doGet(request, response2);
-        Assert.assertEquals("Hub should not able to fulfill request due to duplicate uuid",HttpServletResponse.SC_BAD_REQUEST,response2.getErrorCode());
-        Assert.assertEquals("Hub should not able to fulfill request due to duplicate uuid","Test run already exists with the same UUID.",response2.getErrorMessage());
+        Assert.assertEquals("Hub should be able to fulfill request due to duplicate uuid",HttpServletResponse.SC_BAD_REQUEST,response2.getErrorCode());
+        Assert.assertEquals("Hub should be able to fulfill request due to duplicate uuid","Test run already exists with the same UUID.",response2.getErrorMessage());
     }
 
     @Test
