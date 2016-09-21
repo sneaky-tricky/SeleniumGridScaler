@@ -1,0 +1,666 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Creates a Selenium Grid Hub.",
+
+  "Parameters" : {
+
+    "DeploymentName": {
+      "Description" : "Unique Name for this deployment. e.g. Production.",
+      "Type": "String",
+      "AllowedValues" : ["test", "dev", "stage", "prod"],
+      "Default": "dev",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+    
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance.",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "Default" : "Tank",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+   
+    "CostCenter": {
+      "Description" : "The Cost center to charge these resourecs to.",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default": "CAS",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+
+
+    "AdminContact": {
+      "Description" : "The admin contact.",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "Denis Angleton",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+    
+    "InstanceType" : {
+      "Description" : "EC2 instance type",
+      "Type" : "String",
+      "Default" : "t2.medium",
+      "AllowedValues" : [ 
+            "t1.micro","t2.medium","t2.large",
+		    "m1.small",
+		    "m3.medium","m3.large","m3.xlarge","m3.2xlarge",
+		    "m4.large",
+		    "c1.medium","c1.large","c1.xlarge","c3.xlarge","c3.2xlarge", "c3.4xlarge"
+	  ],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "SubnetId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::Subnet::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "subnet-28d2f74d"
+    },
+
+    "FallbackSubnetId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::Subnet::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "subnet-bb5328cc"
+    },
+    
+    "Arch": {
+      "Description" : "The Architecture of the base ami.",
+      "Type": "String",
+      "AllowedValues" : [ "PV64","HVM64","HVMG2"],
+      "Default" : "HVM64"
+    },
+    
+    "VpcId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::VPC::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "vpc-63eabe06"
+    }
+     
+  },
+  
+  "Mappings" : {
+    "InstanceMap" : {
+      "t1.micro"    : { "JvmHeap" : "512m", "MaxPermSize" :  "96m"},
+      "t2.medium"    : { "JvmHeap" : "3g", "MaxPermSize" :  "512m"},
+      "t2.large"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "m1.small"    : { "JvmHeap" : "1g", "MaxPermSize" :  "192m" },
+      "m3.medium"  : { "JvmHeap" : "3g", "MaxPermSize" :  "512m" },
+      "m3.large"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "m3.xlarge"   : { "JvmHeap" : "12g", "MaxPermSize" :  "512m" },
+      "m3.2xlarge"  : { "JvmHeap" : "28g", "MaxPermSize" :  "512m" },
+      "m4.large"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "c1.medium"   : { "JvmHeap" : "1g", "MaxPermSize" :  "192m" },
+      "c3.large"   : { "JvmHeap" : "3g", "MaxPermSize" :  "265m" },
+      "c3.xlarge"   : { "JvmHeap" : "6g", "MaxPermSize" :  "512m" },
+      "c3.2xlarge"  : { "JvmHeap" : "13g", "MaxPermSize" :  "512m" },
+      "c3.4xlarge"  : { "JvmHeap" : "27g", "MaxPermSize" :  "512m" }
+    }
+  },
+  
+  "Resources" : {
+  
+    "AmiInfo": {
+      "Type": "Custom::AmiInfo",
+      "Properties": {
+        "ServiceToken": "arn:aws:lambda:us-west-2:447926870024:function:Amazon-Linux-Latest-AMI",
+        "Region": { "Ref": "AWS::Region" },
+        "Architecture": { "Ref" : "Arch" }
+      }
+    },
+    "LinuxNodeAmi": {
+      "Type": "Custom::LinuxNodeAmi",
+      "Properties": {
+        "ServiceToken": "arn:aws:lambda:us-west-2:447926870024:function:findLatestAmi",
+        "Region": { "Ref": "AWS::Region" },
+        "ServiceId":"gridscaler",
+	    "FilterNames": [
+	      "tag:role",
+	      "tag:os"
+	    ],
+	    "FilterValues": [
+	      "node",
+	      "linux"
+	    ]
+      }
+    },
+    "WindowsNodeAmi": {
+      "Type": "Custom::WindowsNodeAmi",
+      "Properties": {
+        "ServiceToken": "arn:aws:lambda:us-west-2:447926870024:function:findLatestAmi",
+        "Region": { "Ref": "AWS::Region" },
+        "ServiceId":"gridscaler",
+        "FilterNames": [
+          "tag:role",
+          "tag:os"
+        ],
+        "FilterValues": [
+          "node",
+          "windows"
+        ]
+      }
+    },
+    
+    "HubInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+        "configSets" : {
+          "common": [ "common-install", "install-app"]
+        },
+        "common-install" : {
+            "packages" : {
+              "yum" : {
+                "ntp" : [],
+                "awslogs" : []
+              }
+          },
+          "sources" : {},
+          "files" : {},
+          "commands" : {
+             "010_ntp" : {
+                "command" : "echo -e \"server 0.north-america.pool.ntp.org\\nserver 1.north-america.pool.ntp.org\\nserver 2.north-america.pool.ntp.org\\nserver 3.north-america.pool.ntp.org\">>/etc/ntp.conf"
+              },
+              "020_rm old_java" : {
+                "command" : "yum -y remove java-1.7.0-openjdk  >> /var/log/script-commands.log"
+              }
+          },
+          "services" : {
+            "sysvinit" : {  
+                "awslogs" : {
+                  "enabled"       : "true",
+                  "ensureRunning" : "true"                
+                }
+              }
+          },
+          "users" : {},
+          "groups" : {}
+        },
+        "install-app" : {
+          "packages" : {
+              "yum" : {
+                "java-1.8.0-openjdk" : []
+              }
+          },
+          "sources" : {},
+          "files" : {
+            "/opt/grid/start_hub.sh" : {
+                "content" : { "Fn::Join" : ["", [
+                  "#!/bin/bash", "\n",
+                  "cd /opt/grid", "\n",
+                  "java ",
+                  " -Xmx", 
+                  { "Fn::FindInMap" : [ "InstanceMap", { "Ref" : "InstanceType" }, "JvmHeap"]},
+                  " -DpropertyFileLocation=/opt/grid/aws.properties -DipAddress=\"http://gridscaler-",
+                  { "Ref" : "DeploymentName" },
+                  ".cas.aws.qualcomm.com",
+                  "\" -cp /opt/grid/automation-grid.jar org.openqa.grid.selenium.GridLauncher ",
+                   " -role hub ",
+                   " -servlets \"com.rmn.qa.servlet.AutomationTestRunServlet\",\"com.rmn.qa.servlet.StatusServlet\",\"com.rmn.qa.servlet.BmpServlet\""
+                   ]]
+                 },
+                "mode" : "000755",
+                "owner" : "root",
+                "group" : "root"
+            },
+            "/tmp/install_certs.sh" : {
+                "content" : { "Fn::Join" : ["", [
+                "#Install Qualcomm cacerts", "\n", 
+                "#!bin/bash", "\n", 
+                "JAVA_HOME=$(readlink -f /usr/bin/java | sed \"s:bin/java::\")", "\n", 
+                "S3_BUCKET=babel-resources/setup/certs", "\n",
+                "aws s3 cp s3://$S3_BUCKET/qc_root_g2_cert.crt /tmp/", "\n", 
+                "aws s3 cp s3://$S3_BUCKET/ssl_v2_cert.crt /tmp/", "\n", 
+                "$JAVA_HOME/bin/keytool -noprompt -import -trustcacerts -alias qc_root_g2_cert -file /tmp/qc_root_g2_cert.crt -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit", "\n", 
+                "$JAVA_HOME/bin/keytool -noprompt -import -trustcacerts -alias ssl_v1_cert -file /tmp/ssl_v1_cert.crt -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit", "\n", 
+                "$JAVA_HOME/bin/keytool -noprompt -import -trustcacerts -alias ssl_v2_cert -file /tmp/ssl_v2_cert.crt -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit", "\n", 
+                ""
+                ]]
+                },
+                "mode" : "000755",
+                "owner" : "root",
+                "group" : "root"
+            },
+            "/opt/grid/aws.properties" : {
+                "content" : { "Fn::Join" : ["", [
+                   "# Default region", "\n", 
+                   "region=us-west-2", "\n", 
+                   "us-west-2_endpoint=https://ec2.us-west-2.amazonaws.com", "\n", 
+                   "# Node AMI Info", "\n",
+                   "us-west-2_linux_node_ami=",
+                   { "Fn::GetAtt": [ "LinuxNodeAmi", "Id" ] }, "\n",
+                   "us-west-2_windows_node_ami=",
+                   { "Fn::GetAtt": [ "WindowsNodeAmi", "Id" ] }, "\n",
+                   "node_instance_type_chrome=c4.large", "\n",
+                   "# Firefox and IE will only run in 1 browser per VM so we'll use micros for them", "\n",
+                   "node_instance_type_firefox=t2.small", "\n",
+                   "node_instance_type_internetexplorer=t2.small", "\n",
+                   "# Security Group Info", "\n",
+                   "us-west-2_security_group=", 
+                   {"Ref": "HubSecurityGroup"}, "\n",
+                   
+                   "# VPC Info", "\n",
+                   "us-west-2_subnet_id=",
+                   {"Ref": "SubnetId"}, "\n",
+                   "us-west-2_subnet_fallback_id_1=",
+                   {"Ref": "FallbackSubnetId"}, "\n",
+                   "# Key", "\n",
+                   "us-west-2_key_name=",
+                   {"Ref": "KeyName"}, "\n",
+                   "# Tags to be used", "\n",
+                   "tag_name=Name,GridScalerNode-",
+                   {"Ref": "DeploymentName"}, "\n",
+                   "tag_admin_contact=admin_contact,",
+                   {"Ref": "AdminContact"}, "\n",
+                   "tag_service_id=service_id,GridScaler-",
+                   {"Ref": "DeploymentName"}, "\n",
+                   "tag_service_data=service_data,env=",
+                   {"Ref": "DeploymentName"}, "\n"
+                  ]]
+                 },
+                "mode" : "000755",
+                "owner" : "root",
+                "group" : "root"
+            }
+          },
+          "commands" : {
+              "010_download_jar" : {
+                "command" : "aws s3 cp s3://babel-resources/setup/wars/gridscaler/automation-grid.jar /opt/grid/  >> /var/log/script-commands.log"
+              },
+              "020_download_jar" : {
+                "command" : "/tmp/install_certs.sh  >> /var/log/script-commands.log"
+              }
+          },
+          "services" : {},
+          "users" : {},
+          "groups" : {}
+        }
+      }
+    },
+     
+    "Properties" : {
+      "KeyName" : { "Ref" : "KeyName" },
+      "ImageId" : { "Fn::GetAtt": [ "AmiInfo", "Id" ] },
+      "InstanceType" : { "Ref" :  "InstanceType"},
+      "Monitoring": "true",
+      "IamInstanceProfile" :{ "Ref": "InstanceProfile" },
+      "Tags": [
+          {
+            "Key": "Name",
+            "Value": { "Fn::Join" : ["", ["GridScalerHub-",
+            { "Ref" : "DeploymentName" }
+          ]]}
+          },
+          {
+            "Key": "admin_contact",
+            "Value": {"Ref" : "AdminContact"}
+          },
+          {
+            "Key": "service_id",
+            "Value": { "Fn::Join" : ["", ["GridScaler-",
+            { "Ref" : "DeploymentName" }
+          ]]}
+          },
+          {
+            "Key": "service_data",
+            "Value": { "Fn::Join" : ["", ["env",
+            { "Ref" : "DeploymentName" },
+            "+cost_center",{ "Ref" : "CostCenter" }
+          ]]}
+          }
+      ],
+      "NetworkInterfaces" : [{
+          "AssociatePublicIpAddress" : "false",
+          "DeleteOnTermination" : "true",
+          "Description" : "Network Interface",
+          "DeviceIndex" : "0",
+          "GroupSet" : [{"Ref" : "HubSecurityGroup" }],
+          "SubnetId" : {"Ref" : "SubnetId" }
+      }],
+        
+      "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+        "#!/bin/bash -v", "\n",
+        "yum -y update", "\n",
+        "yum update -y aws-cfn-bootstrap", "\n",
+        "/opt/aws/bin/cfn-init --region ",{ "Ref": "AWS::Region" },
+        " -s ", { "Ref": "AWS::StackName" },
+        " -r HubInstance -c common", "\n",
+
+        "# All is well so signal success\n",
+        "/opt/aws/bin/cfn-signal -e 0 -r \"Setup complete\" '", { "Ref" : "UIInstanceWaitHandle" }, "'\n",
+        "nohup /opt/grid/start_hub.sh &"
+        ]]}
+      }
+     }
+   }, 
+
+
+    "ElasticLoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Metadata" : {
+          "Comment" : "Add logging in here."
+        },
+      "Properties" : {
+        
+        "LoadBalancerName" : { "Fn::Join" : ["", ["GridScaler-",
+            { "Ref" : "DeploymentName" }
+          ]]},
+        "Scheme" : "internal",
+        "CrossZone" : "true",
+        "ConnectionSettings" : {
+           "IdleTimeout" : "300"
+        },
+        "Instances" :[{"Ref" : "HubInstance"}],
+        "ConnectionDrainingPolicy" : {
+           "Enabled" : "true",
+           "Timeout" : "300"
+        },
+        "SecurityGroups" : [ { "Ref" : "LoadBalancerSecurityGroup" } ],
+        "Subnets" : [{ "Ref" : "SubnetId" }, { "Ref" : "FallbackSubnetId" }],
+        "Listeners" : [ {
+          "LoadBalancerPort" : "80",
+          "InstancePort" : "4444",
+          "Protocol" : "HTTP"
+        },
+        {
+            "LoadBalancerPort": "443",
+            "InstancePort": "4444",
+            "Protocol": "HTTPS",
+            "InstanceProtocol" : "HTTP",
+            "PolicyNames" : ["ELBSecurityPolicy-2016-08"],
+            "SSLCertificateId" : "arn:aws:iam::447926870024:server-certificate/cas.aws.qualcomm.com"
+        }],
+        "HealthCheck" : {
+          "Target" : "HTTP:4444/",
+          "HealthyThreshold" : "3",
+          "UnhealthyThreshold" : "5",
+          "Interval" : "30",
+          "Timeout" : "25"
+        },
+        "Tags": [
+          {
+            "Key": "admin_contact",
+            "Value": {"Ref" : "AdminContact"}
+          },
+          {
+            "Key": "service_id",
+            "Value": { "Fn::Join" : ["", ["GridScaler-",
+            { "Ref" : "DeploymentName" }
+          ]]}
+          },
+          {
+            "Key": "service_data",
+            "Value": { "Fn::Join" : ["", ["env",
+            { "Ref" : "DeploymentName" },
+            "+cost_center",{ "Ref" : "CostCenter" }
+          ]]}
+          }
+        ]
+      }
+    },
+    
+    "Route53Entry" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "Comment" : {
+          "Fn::Join" : [
+            "",
+            [
+              "For GridScaler ",
+              { "Ref" : "DeploymentName"  }
+            ]
+          ]
+        },
+        "HostedZoneName" : "cas.aws.qualcomm.com.",
+        "Name" : {
+            "Fn::Join" : [ "", [
+            "gridscaler-",
+            { "Ref" : "DeploymentName"  },
+               ".cas.aws.qualcomm.com"
+            ] ]
+         },
+        "ResourceRecords" : [ { "Fn::GetAtt": [ "ElasticLoadBalancer", "DNSName" ] } ],
+        "TTL" : "300",
+        "Type" : "CNAME"
+      }
+    },
+    
+    "InstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "InstanceRole"
+          }
+        ]
+      }
+    },
+    
+    "InstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "ManagedPolicyArns": ["arn:aws:iam::aws:policy/AmazonS3FullAccess", "arn:aws:iam::aws:policy/AmazonEC2FullAccess"],
+        "AssumeRolePolicyDocument": {
+           "Version" : "2012-10-17",
+           "Statement": [ {
+              "Effect": "Allow",
+              "Principal": {
+                 "Service": [ "ec2.amazonaws.com" ]
+              },
+              "Action": [ "sts:AssumeRole" ]
+           } ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "cas-app-instance",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:PassRole"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeLogStreams",
+                    "logs:GetLogEvents",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:us-west-2:*:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "LoadBalancerSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable HTTP access on port 80",
+        "VpcId" : { "Ref" : "VpcId" },
+        "SecurityGroupIngress" : [ {
+          "IpProtocol" : "tcp",
+          "FromPort" : "80",
+          "ToPort" : "80",
+          "CidrIp" : "0.0.0.0/0"
+        },
+        {
+          "IpProtocol" : "tcp",
+          "FromPort" : "443",
+          "ToPort" : "443",
+          "CidrIp" : "0.0.0.0/0"
+        } ],
+        "SecurityGroupEgress" : [ {
+          "IpProtocol" : "tcp",
+          "FromPort" : "4444",
+          "ToPort" : "4444",
+          "CidrIp" : "0.0.0.0/0"
+        } ],
+        "Tags": [
+          {
+            "Key": "admin_contact",
+            "Value": {"Ref" : "AdminContact"}
+          },
+          {
+            "Key": "service_id",
+            "Value": { "Fn::Join" : ["", ["GridScaler-",
+            { "Ref" : "DeploymentName" }
+          ]]}
+          },
+          {
+            "Key": "service_data",
+            "Value": { "Fn::Join" : ["", ["env",
+            { "Ref" : "DeploymentName" },
+            "+cost_center",{ "Ref" : "CostCenter" }
+          ]]}
+          }
+        ]
+      }
+    },
+
+    "HubSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable all communication from LoadBalancer and internally.",
+        "VpcId" : { "Ref" : "VpcId" },
+        "Tags" : [
+          {
+            "Key": "Name", 
+            "Value": { "Fn::Join" : ["", ["GridScaler-",
+            { "Ref" : "DeploymentName" },
+            "-SG"
+          ]]}
+          },
+          {
+            "Key": "admin_contact",
+            "Value": {"Ref" : "AdminContact"}
+          },
+          {
+            "Key": "service_id",
+            "Value": { "Fn::Join" : ["", ["Babel-",
+            { "Ref" : "DeploymentName" }
+          ]]}
+          },
+          {
+            "Key": "service_data",
+            "Value": { "Fn::Join" : ["", ["env",
+            { "Ref" : "DeploymentName" },
+            "+cost_center",{ "Ref" : "CostCenter" }
+          ]]}
+          }
+        ],        
+        "SecurityGroupIngress" : [
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "10.0.0.0/8" },
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "72.16.0.0/12" },
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "192.168.0.0/16" },
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "199.106.96.0/19" },
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "129.46.0.0/16" }
+        ]
+      }
+    },
+
+    "SelfRefSecurityGroupIngressForLoadBalancer" : {
+         "Type" : "AWS::EC2::SecurityGroupIngress",
+         "Properties" : {
+             "GroupId" : { "Ref" : "HubSecurityGroup" },
+             "IpProtocol" : "tcp",
+             "ToPort" : "65535",
+             "FromPort" : "0",
+             "SourceSecurityGroupId" : { "Ref" : "LoadBalancerSecurityGroup" }
+         },
+         "DependsOn" : "HubSecurityGroup"
+     },
+     "SelfRefSecurityGroupIngressForHub" : {
+         "Type" : "AWS::EC2::SecurityGroupIngress",
+         "Properties" : {
+             "GroupId" : { "Ref" : "HubSecurityGroup" },
+             "IpProtocol" : "tcp",
+             "ToPort" : "65535",
+             "FromPort" : "0",
+             "SourceSecurityGroupId" : { "Ref" : "HubSecurityGroup" }
+         },
+         "DependsOn" : "HubSecurityGroup"
+     },
+    
+    "UIInstanceWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle",
+      "Properties" : {
+            }
+    },
+    "UIInstanceWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "HubInstance",
+      "Properties" : {
+        "Handle" : { "Ref" : "UIInstanceWaitHandle" },
+        "Timeout" : "900"
+      }
+    }   
+  },
+
+
+  "Outputs" : {
+    
+    "InstanceId" : {
+      "Description" : "Instance ID",
+      "Value" : { "Ref" : "HubInstance" }
+    },
+    
+    "HubSecurityGroupID" : {
+      "Description" : "security group",
+      "Value" : { "Ref" : "HubSecurityGroup" }
+    },
+    
+    "EnvivonmentD" : {
+      "Description" : "Environment",
+      "Value" : { "Ref" : "DeploymentName" }
+    },
+    
+    "LoadBalancerSecurityGroupId" : {
+      "Description" : "babel load balancer security group",
+      "Value" : { "Ref" : "LoadBalancerSecurityGroup" }
+    },
+    
+    "InstanceRoleID" : {
+      "Description" : "instance role",
+      "Value" : { "Ref" : "InstanceRole" }
+    },
+    
+    "InstanceProfileID" : {
+      "Description" : "instance profile",
+      "Value" : { "Ref" : "InstanceProfile" }
+    },
+    
+    "ElasticLoadBalancerId" : {
+      "Description" : "load balancer",
+      "Value" : { "Ref" : "ElasticLoadBalancer" }
+    },
+    
+    "Route53Name" : {
+      "Description" : "route53 name",
+      "Value" : { "Ref" : "Route53Entry" }
+    }
+  }
+}

@@ -31,6 +31,7 @@
         "createdOs": "<CREATED_OS>",
         "register": true,
         "registerCycle": 5000,
+        "host": "<IP>",
         "hubHost": "<HOST_NAME>"
     }
 }

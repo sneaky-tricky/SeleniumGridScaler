@@ -1,0 +1,186 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "AMI builder - builds an ami with the defined settings.",
+  "Parameters" : {
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance.",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "Default" : "Tank",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+  
+    "InstanceType" : {
+      "Description" : "EC2 instance type",
+      "Type" : "String",
+      "Default" : "t2.medium",
+      "AllowedValues" : [ "t1.micro","t2.medium","t2.large","m1.small","m1.medium","m1.large","m1.xlarge", "m4.large","m2.xlarge","m2.2xlarge","m2.4xlarge",
+      "m3.xlarge","m3.2xlarge","c1.medium","c1.xlarge","c3.xlarge","c3.2xlarge", "c3.4xlarge"],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "SubnetId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::Subnet::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "subnet-28d2f74d"
+    },
+    
+    "VpcId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::VPC::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "vpc-63eabe06"
+    }
+
+  },
+
+  "Mappings" : {
+      "RegionMap" : {
+        "us-west-2"      : { "AMI" : "ami-b9ff39d9"}
+      }
+
+  },
+  
+  "Resources" : {
+    
+    
+    "CreateLinuxAmiInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI"]},
+        "InstanceType": { "Ref" : "InstanceType" },
+        "KeyName": { "Ref" : "KeyName" },
+        "Monitoring": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": { "Fn::Join" : ["", [
+                "GridScalerNodeAmi_linux_",
+                { "Ref": "AWS::StackName" }
+                ]]}
+          },
+          {
+            "Key": "admin_contact",
+            "Value": "denisa@qualcomm.com"
+          }
+        ],
+        "NetworkInterfaces" : [{
+          "AssociatePublicIpAddress" : "false",
+          "DeleteOnTermination" : "true",
+          "Description" : "Network Interface",
+          "DeviceIndex" : "0",
+          "GroupSet" : [{"Ref" : "InstanceSg" }],
+          "SubnetId" : {"Ref" : "SubnetId" }
+        }],
+        
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#!/bin/bash -v", "\n",
+          "echo 'Start installing dependencies' > /var/log/startup.log", "\n",
+          "GRID_DIR=/opt/grid", "\n",
+          "TMP_DIR=/tmp/install", "\n",
+          "apt-get -y install unzip", "\n",
+          "apt-get -y install openjdk-8-jdk", "\n",
+          "apt-get -y install xvfb", "\n",
+
+          "apt-get -y update", "\n",
+          "apt-get -y -f install", "\n",
+          "mkdir $GRID_DIR", "\n",
+          "mkdir $TMP_DIR", "\n",
+
+          "wget http://chromedriver.storage.googleapis.com/2.22/chromedriver_linux64.zip -O $TMP_DIR/chromedriver.zip", "\n",
+          "unzip -d $GRID_DIR $TMP_DIR/chromedriver.zip ", "\n",
+          "wget https://github.com/mozilla/geckodriver/releases/download/v0.9.0/geckodriver-v0.9.0-linux64.tar.gz -O $TMP_DIR/gekkoDriver.tgz", "\n",
+          "tar -zxvf $TMP_DIR/gekkoDriver.tgz -C $GRID_DIR", "\n",
+          "wget http://selenium-release.storage.googleapis.com/2.52/selenium-server-standalone-2.52.0.jar -O $GRID_DIR/selenium-server-node.jar", "\n",
+          "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O $TMP_DIR/chrome.deb", "\n",
+          "dpkg -i $TMP_DIR/chrome.deb", "\n",
+          "apt-get -y -f install", "\n",
+          "wget https://sourceforge.net/projects/ubuntuzilla/files/mozilla/apt/pool/main/f/firefox-mozilla-build/firefox-mozilla-build_46.0.1-0ubuntu1_amd64.deb -O $TMP_DIR/firefox.deb", "\n",
+          "dpkg -i $TMP_DIR/firefox.deb", "\n",
+          
+          "cp /etc/rc.local /tmp/rc.local", "\n",
+          "sed \"s/^exit 0/\\/opt\\/grid\\/grid_start_node.sh >> \\/opt\\/grid\\/process.log 2>\\&1/g\" /tmp/rc.local > /etc/rc.local", "\n",
+
+          "rm -fr $TMP_DIR", "\n",
+          "echo 'Done installing dependencies' >> /var/log/startup.log", "\n",
+          "echo 'Start creating start script' >> /var/log/startup.log", "\n",
+          "echo '#!/bin/sh' > /opt/grid/grid_start_node.sh", "\n",
+          "echo 'sudo echo \"127.0.0.1 $(hostname)\" >> /etc/hosts' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'PATH=/sbin:/usr/sbin:/bin:/usr/bin' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'GRID_INSTALL=/opt/grid' >> /opt/grid/grid_start_node.sh", "\n",
+
+          "echo 'export EC2_INSTANCE_ID=\"`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id`\"' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'export INSTANCE_IP=\"`wget -q -O - http://169.254.169.254/latest/meta-data/local-ipv4`\"' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo '# Pull down the user data, which will be a zip file containing necessary information' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'export NODE_TEMPLATE=\"$GRID_INSTALL/nodeConfigTemplate.json\"' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'sudo wget http://169.254.169.254/latest/user-data -O $GRID_INSTALL/data.zip' >> /opt/grid/grid_start_node.sh", "\n",
+
+          "echo '# Now, unzip the data downloaded from the userdata' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'sudo unzip -o $GRID_INSTALL/data.zip -d $GRID_INSTALL' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo '# Replace the instance ID in the node config file' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'sudo sed \"s/<INSTANCE_ID>/$EC2_INSTANCE_ID/g\" $NODE_TEMPLATE > $GRID_INSTALL/nodeConfig1.json' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'sudo sed \"s/<IP>/$INSTANCE_IP/g\" $GRID_INSTALL/nodeConfig1.json > $GRID_INSTALL/nodeConfig.json' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo '# Finally, run the java process in a window so browsers can run' >> /opt/grid/grid_start_node.sh", "\n",
+          "echo 'sudo xvfb-run --auto-servernum --server-args=\"-screen 0, 1600x1200x24\" java -jar $GRID_INSTALL/selenium-server-node.jar -role node -nodeConfig $GRID_INSTALL/nodeConfig.json -Dwebdriver.chrome.driver=\"$GRID_INSTALL/chromedriver\"  -Dwebdriver.gecko.driver=\"$GRID_INSTALL/geckodriver\" -log $GRID_INSTALL/grid.log &' >> /opt/grid/grid_start_node.sh", "\n",
+          "chmod 755 /opt/grid/grid_start_node.sh", "\n",
+          "echo 'Done creating start script' >> /var/log/startup.log", "\n"
+          
+          
+        ]]}}
+      }
+    },
+    
+    "InstanceSg": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable ssh from qualcomm ips.",
+        "VpcId": {"Ref" :  "VpcId" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "10.0.0.0/8"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "172.16.0.0/12"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "192.168.0.0/16"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "199.106.96.0/19"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "129.46.0.0/16"
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "LinuxInstanceId" : {
+      "Description" : "InstanceId of the newly created linux node",
+      "Value" : { "Ref" : "CreateLinuxAmiInstance" }
+    }
+  }
+}

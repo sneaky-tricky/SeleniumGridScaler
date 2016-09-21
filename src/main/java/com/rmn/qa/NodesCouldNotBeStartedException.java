@@ -13,11 +13,13 @@
 package com.rmn.qa;
 
 public class NodesCouldNotBeStartedException extends Exception {
+    private static final long serialVersionUID = 1L;
+
     public NodesCouldNotBeStartedException(String msg) {
         super(msg);
     }
 
     public NodesCouldNotBeStartedException(String msg, Throwable t) {
-        super(msg,t);
+        super(msg, t);
     }
 }

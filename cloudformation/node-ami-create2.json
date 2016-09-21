@@ -1,0 +1,261 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "AMI builder - builds an ami with the defined settings.",
+  "Parameters" : {
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance.",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "AllowedPattern" : "[\\x20-\\x7E]*",
+      "Default" : "Tank",
+      "ConstraintDescription" : "can contain only ASCII characters."
+    },
+  
+    "InstanceType" : {
+      "Description" : "EC2 instance type",
+      "Type" : "String",
+      "Default" : "t2.medium",
+      "AllowedValues" : [ "t1.micro","t2.medium","t2.large","m1.small","m1.medium","m1.large","m1.xlarge", "m4.large","m2.xlarge","m2.2xlarge","m2.4xlarge",
+      "m3.xlarge","m3.2xlarge","c1.medium","c1.xlarge","c3.xlarge","c3.2xlarge", "c3.4xlarge"],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "SubnetId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::Subnet::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "subnet-28d2f74d"
+    },
+    
+    "VpcId": {
+      "Description" : "ID of the default subnet that instances will be created in.",
+      "Type": "AWS::EC2::VPC::Id",
+      "MinLength": "1",
+      "MaxLength": "255",
+      "Default" : "vpc-63eabe06"
+    }
+
+  },
+
+  "Mappings" : {
+      "RegionMap" : {
+        "us-west-2"      : { "AMI" : "ami-b9ff39d9"}
+      }
+
+  },
+  
+  "Resources" : {
+    
+    "NodeInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+        "configSets" : {
+          "common": [ "common-install", "install-app"]
+        },
+        "common-install" : {
+            "packages" : {
+              "apt" : {
+                "openjdk-8-jdk" : [],
+                "unzip" : [],
+                "xvfb" : []
+              }
+          },
+          "sources" : {},
+          "files" : {},
+          "commands" : {},
+          "services" : {},
+          "users" : {},
+          "groups" : {}
+        },
+        
+        "install-app" : {
+          "packages" : {},
+          "sources" : {},
+          "files" : {
+            "/opt/grid/grid_start_node.sh" : {
+            
+                "content" : { "Fn::Join" : ["", [
+                  "#!/bin/bash", "\n",
+                  "echo \"127.0.0.1 $(hostname)\" >> /etc/hosts", "\n",
+                  "PATH=/sbin:/usr/sbin:/bin:/usr/bin", "\n",
+                  "GRID_INSTALL=/opt/grid", "\n",
+                  "export EC2_INSTANCE_ID=\"`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id`\"", "\n",
+                  "export INSTANCE_IP=\"`wget -q -O - http://169.254.169.254/latest/meta-data/local-ipv4`\"", "\n",
+                  "# Pull down the user data, which will be a zip file containing necessary information", "\n",
+                  "export NODE_TEMPLATE=\"$GRID_INSTALL/nodeConfigTemplate.json\"", "\n",
+                  "wget http://169.254.169.254/latest/user-data -O $GRID_INSTALL/data.zip", "\n",
+                  "# Now, unzip the data downloaded from the userdata", "\n",
+                  "unzip -o $GRID_INSTALL/data.zip -d $GRID_INSTALL", "\n",
+                  "# Replace the instance ID in the node config file", "\n",
+                  "sed \"s/<INSTANCE_ID>/$EC2_INSTANCE_ID/g\" $NODE_TEMPLATE > $GRID_INSTALL/nodeConfig1.json", "\n",
+                  "sed \"s/<IP>/$INSTANCE_IP/g\" $GRID_INSTALL/nodeConfig1.json > $GRID_INSTALL/nodeConfig.json", "\n",
+                  "# Finally, run the java process in a window so browsers can run", "\n",
+                  "xvfb-run --auto-servernum --server-args=\"-screen 0, 1600x1200x24\" java -jar $GRID_INSTALL/selenium-server-node.jar -role node -nodeConfig $GRID_INSTALL/nodeConfig.json -Dwebdriver.chrome.driver=\"$GRID_INSTALL/chromedriver\" -log $GRID_INSTALL/grid.log &", "\n",
+                  ""
+                   ]]
+                 },
+                "mode" : "000755",
+                "owner" : "root",
+                "group" : "root"
+            }
+          },
+          "commands" : {
+              "005_mkdirs" : {
+                "command" : "mkdir /tmp/grid"
+              },
+              "010_download_chromedriver" : {
+                "command" : "wget http://chromedriver.storage.googleapis.com/2.22/chromedriver_linux64.zip -O /tmp/grid/chromedriver.zip"
+              },
+              "020_unzip_cromedriver" : {
+                "command" : "unzip -d /opt/grid /tmp/grid/chromedriver.zip"
+              },
+              "030_download_selenium" : {
+                "command" : "wget http://selenium-release.storage.googleapis.com/2.42/selenium-server-standalone-2.42.0.jar -O /opt/grid/selenium-server-node.jar"
+              },
+              "040_download_chrome" : {
+                "command" : "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -O /tmp/grid/chrome.deb"
+              },
+              "045_prepare_install" : {
+                "command" : "apt-get -y -f install"
+              },
+              "046_install_support" : {
+                "command" : "apt-get -y -f install"
+              },
+              "050_install_chrome" : {
+                "command" : "dpkg -i /tmp/grid/chrome.deb"
+              },
+              "060_download_firefox" : {
+                "command" : "apt-get -y -f install"
+              },
+              "070_install_firefox" : {
+                "command" : "apt-get -y install firefox"
+              },
+              "090_copy_rc.local" : {
+                "command" : "cp /etc/rc.local /tmp/rc.local"
+              },
+              "100_write_rc.local" : {
+                "command" : "sed \"s/^exit 0/\\/opt\\/grid\\/grid_start_node.sh >> \\/opt\\/grid\\/process.log 2>\\&1/g\" /tmp/rc.local > /etc/rc.local"
+              }
+              
+          },
+          "services" : {},
+          "users" : {},
+          "groups" : {}
+        }
+      }
+    },
+     
+    "Properties" : {
+      "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI"]},
+      "InstanceType": { "Ref" : "InstanceType" },
+      "KeyName": { "Ref" : "KeyName" },
+      "Monitoring": "true",
+      "Tags": [
+          {
+            "Key": "Name",
+            "Value": { "Fn::Join" : ["", [
+                "GridScalerNodeAmi_linux_",
+                { "Ref": "AWS::StackName" }
+                ]]}
+          },
+          {
+            "Key": "admin_contact",
+            "Value": "denisa@qualcomm.com"
+          }
+        ],
+	      "NetworkInterfaces" : [{
+	          "AssociatePublicIpAddress" : "false",
+	          "DeleteOnTermination" : "true",
+	          "Description" : "Network Interface",
+	          "DeviceIndex" : "0",
+	          "GroupSet" : [{"Ref" : "InstanceSg" }],
+	          "SubnetId" : {"Ref" : "SubnetId" }
+	      }],
+	        
+	      "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+	        "#!/bin/bash -v", "\n",
+	        "apt-get -y update", "\n",
+	        "apt-get -y -f install", "\n",
+	        "apt-get -y install python-setuptools", "\n",
+		    "mkdir aws-cfn-bootstrap-latest", "\n",
+		    "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1", "\n",
+		    "easy_install aws-cfn-bootstrap-latest", "\n",
+		    
+	        "cfn-init --region ",{ "Ref": "AWS::Region" },
+	        " -s ", { "Ref": "AWS::StackName" },
+	        " -r NodeInstance -c common", "\n",
+	
+	        "# All is well so signal success\n",
+	        "cfn-signal -e 0 -r \"Setup complete\" '", { "Ref" : "UIInstanceWaitHandle" }
+	        ]]}
+	       }
+      }
+     },
+  
+     
+    
+    "InstanceSg": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable ssh from qualcomm ips.",
+        "VpcId": {"Ref" :  "VpcId" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "10.0.0.0/8"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "172.16.0.0/12"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "192.168.0.0/16"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "199.106.96.0/19"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp" : "129.46.0.0/16"
+          }
+        ]
+      }
+    },
+    "UIInstanceWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle",
+      "Properties" : {
+            }
+    },
+    "UIInstanceWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "NodeInstance",
+      "Properties" : {
+        "Handle" : { "Ref" : "UIInstanceWaitHandle" },
+        "Timeout" : "900"
+      }
+    }   
+  },
+
+  "Outputs" : {
+    "LinuxInstanceId" : {
+      "Description" : "InstanceId of the newly created linux node",
+      "Value" : { "Ref" : "NodeInstance" }
+    }
+  }
+}
