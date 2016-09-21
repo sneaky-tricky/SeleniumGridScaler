@@ -69,7 +69,7 @@ public class AwsVmManager implements VmManager {
     private Properties awsProperties;
     public static final int CHROME_THREAD_COUNT = 5;
     public static final int IE_THREAD_COUNT = 5;
-    public static final int FIREFOX_THREAD_COUNT = 1;
+    public static final int FIREFOX_IE_THREAD_COUNT = 1;
     private String region;
 
     static {
@@ -496,7 +496,7 @@ public class AwsVmManager implements VmManager {
         String nodeConfig = getFileContents(resourceName);
 
         nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION", maxSessions);
-        nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_FIREFOX", AwsVmManager.FIREFOX_THREAD_COUNT);
+        nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_FIREFOX", AwsVmManager.FIREFOX_IE_THREAD_COUNT);
         nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_IE", AwsVmManager.IE_THREAD_COUNT);
         nodeConfig = replaceConfig(nodeConfig, "MAX_SESSION_CHROME", AwsVmManager.CHROME_THREAD_COUNT);
 
